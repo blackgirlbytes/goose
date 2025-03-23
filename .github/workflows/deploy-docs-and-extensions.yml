@@ -1,29 +1,31 @@
-name: Deploy Docs & Extensions # (/documentation and /extensions-site)
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches:
       - main
-  
   pull_request:
     paths:
       - 'documentation/**'
       - 'extensions-site/**'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - name: Checkout the branch
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20 
+          node-version: 20
+          cache: 'npm'
 
       - name: Cache Node.js modules (documentation)
         uses: actions/cache@v3
@@ -40,7 +42,7 @@ jobs:
           INKEEP_INTEGRATION_ID: ${{ secrets.INKEEP_INTEGRATION_ID }}
           INKEEP_ORG_ID: ${{ secrets.INKEEP_ORG_ID }}
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Cache Node.js modules (extensions-site)
@@ -54,9 +56,9 @@ jobs:
       - name: Install dependencies and build extensions-site
         working-directory: ./extensions-site
         env:
-          VITE_BASENAME: "/goose/v1/extensions/" # Set the base URL here for the extensions site
+          VITE_BASENAME: "/goose/v1/extensions/"
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Combine builds into one directory
@@ -65,12 +67,24 @@ jobs:
           cp -r documentation/build/* combined-build/
           mkdir -p combined-build/v1/extensions
           mkdir -p combined-build/v1/extensions/install-link-generator
-          cp -r extensions-site/build/client/* combined-build/v1/extensions/
+          cp -r extensions-site/build/* combined-build/v1/extensions/
           cp -r extensions-site/install-link-generator/* combined-build/v1/extensions/install-link-generator/
 
-      - name: Deploy to /gh-pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: combined-build
+          path: combined-build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
