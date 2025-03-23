@@ -25,9 +25,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
-      - name: Cache Node.js modules (documentation)
+      # Separate cache configurations for documentation and extensions-site
+      - name: Cache documentation dependencies
         uses: actions/cache@v3
         with:
           path: ./documentation/node_modules
@@ -45,7 +45,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Cache Node.js modules (extensions-site)
+      - name: Cache extensions-site dependencies
         uses: actions/cache@v3
         with:
           path: ./extensions-site/node_modules
