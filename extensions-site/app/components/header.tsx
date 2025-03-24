@@ -3,7 +3,7 @@ import { IconGoose } from "./icons/goose";
 import { ThemeToggle } from "./themeToggle";
 import { Button } from "./ui/button";
 import { SiteURLs } from '../constants';
-import { NavLink, useLocation } from "react-router";
+import { NavLink, useLocation } from "react-router-dom";
 
 export const Header = () => {
   const location = useLocation();
