@@ -61,13 +61,6 @@ jobs:
           npm install
           npm run build
 
-      - name: Debug - List build outputs
-        run: |
-          echo "Documentation build contents:"
-          ls -la documentation/build/
-          echo "\nExtensions site build contents:"
-          ls -la extensions-site/build/
-
       - name: Combine builds into one directory
         run: |
           mkdir -p combined-build
@@ -76,13 +69,6 @@ jobs:
           mkdir -p combined-build/v1/extensions/install-link-generator
           cp -r extensions-site/build/client/* combined-build/v1/extensions/
           cp -r extensions-site/install-link-generator/* combined-build/v1/extensions/install-link-generator/
-
-      - name: Debug - List combined build
-        run: |
-          echo "Combined build contents:"
-          ls -la combined-build/
-          echo "\nExtensions directory contents:"
-          ls -la combined-build/v1/extensions/
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
