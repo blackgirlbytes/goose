@@ -3,7 +3,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import type { MCPServer } from "../types/server";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router";
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { getGooseInstallLink } from "../utils/install-links";
@@ -20,6 +20,7 @@ export function ServerCard({ server }: { server: MCPServer }) {
             <NavLink
               to={`/detail/${server.id}`}
               className="text-textStandard hover:text-textProminent flex items-center gap-2"
+              viewTransition
             >
               <svg
                 width="13"
