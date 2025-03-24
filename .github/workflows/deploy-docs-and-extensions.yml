@@ -56,7 +56,7 @@ jobs:
       - name: Install dependencies and build extensions-site
         working-directory: ./extensions-site
         env:
-          VITE_BASENAME: "/goose/v1/extensions/"
+          VITE_BASENAME: "/goose/"
         run: |
           npm install
           npm run build
