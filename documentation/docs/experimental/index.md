@@ -13,7 +13,7 @@ import styles from '@site/src/components/Card/styles.module.css';
 </p>
 
 :::note
-The list of experimental features may change as Goose development progresses. Some features may be promoted to stable features, while others might be modified or removed. This section will be updated with specific experimental features as they become available.
+The list of experimental features may change as Goose development progresses. Some features may be promoted to stable features, while others might be modified or removed. This section will be updated with specific experimental features as they become available.afasfdsfsd
 :::
 
 <div className={styles.categorySection}>
