@@ -9,7 +9,7 @@ import styles from '@site/src/components/Card/styles.module.css';
 
 <h1 className={styles.pageTitle}>Experimental</h1>
 <p className={styles.pageDescription}>
-  Goose is an open source project that is constantly being improved and expanded upon. These experimental features and projects are still in development and may not be fully stable or ready for production use, but they showcase exciting possibilities for the future of AI automation.
+  Goose is an open source project that is constantly being improved and expanded upon. These experimental features and projects are still in development and may not be fully stable or ready for production use, but they showcase exciting possibilities for the future of AI automation. Just a test
 </p>
 
 :::note
