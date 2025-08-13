@@ -11,9 +11,9 @@ import { PanelLeft } from 'lucide-react';
 
 # Install Goose
 
-<Tabs>
+<Tabs>m
   <TabItem value="mac" label="macOS" default>
-    Choose to install Goose on CLI and/or Desktop:
+    Choose to install Goose on CLI and/or Desktop:njjhgkj
 
     <Tabs groupId="interface">
       <TabItem value="ui" label="Goose Desktop" default>
