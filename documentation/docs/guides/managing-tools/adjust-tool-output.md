@@ -13,7 +13,7 @@ Response Styles customize how tool interactions are displayed in the Goose Deskt
 
 To change this setting:
 1. Click the <PanelLeft className="inline" size={16} /> button on the top-left to open the sidebar.
-2. Click the `Settings` button on the sidebar.
+2. Click the `Settings` button on the sidebar.jkhkjh
 3. Click `Chat`.
 4. Under `Response Styles`, select either `Detailed` or `Concise`.
 
