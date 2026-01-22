@@ -1,0 +1,45 @@
+# Discord notification for new releases
+# Can be triggered manually for testing or automatically on release tags
+name: Discord Release Notification
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to announce (e.g., v1.21.0)'
+        required: true
+        default: 'v1.21.0'
+  # Automatic trigger on release tags
+  push:
+    tags:
+      - "v1.*"
+
+jobs:
+  notify-discord:
+    name: Discord Notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Discord Release Notification
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          nodetail: true
+          title: "🪿 Goose ${{ steps.version.outputs.version }} Released!"
+          description: |
+            A new version of Goose is now available!
+            
+            **[View Release Notes](https://github.com/block/goose/releases/tag/${{ steps.version.outputs.version }})**
+            
+            **[Download](https://github.com/block/goose/releases/tag/${{ steps.version.outputs.version }})**
+          color: 0x58B09F
+          url: "https://github.com/block/goose/releases/tag/${{ steps.version.outputs.version }}"
