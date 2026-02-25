@@ -1,3 +1,4 @@
+# Force workflow refresh
 # goose Release Notes Generator
 #
 # Automatically generates release notes using goose AI agent when a new release is published.
