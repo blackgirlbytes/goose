@@ -241,33 +241,68 @@ jobs:
           TOTAL_LENGTH=$((HEADER_LENGTH + NOTES_LENGTH + 10))
 
           if [ "$TOTAL_LENGTH" -le "$SAFE_LIMIT" ]; then
-            # Single message - notes fit
+            # Single message - notes fit entirely
             FULL_MESSAGE="${HEADER}
 
-          ${RELEASE_NOTES}"
+${RELEASE_NOTES}"
             send_discord "$FULL_MESSAGE" "$DISCORD_CHANNEL_ID"
           else
-            # Need to thread - send header first, create thread, then post notes in thread
-            echo "Release notes exceed Discord limit (${TOTAL_LENGTH} chars), using thread..."
+            # Notes too long - fit as much as possible in main message, overflow to thread
+            echo "Release notes exceed Discord limit (${TOTAL_LENGTH} chars), using thread for overflow..."
 
-            # Send header message
-            MESSAGE_ID=$(send_discord "${HEADER}
+            # Calculate how much space we have for notes in main message
+            # Reserve space for header + footer message
+            FOOTER="
 
-          📝 *Full release notes in thread below*" "$DISCORD_CHANNEL_ID")
+📝 *More in thread below...*"
+            AVAILABLE_SPACE=$((SAFE_LIMIT - HEADER_LENGTH - ${#FOOTER} - 10))
+
+            # Try to break at a section boundary (## header) for clean split
+            MAIN_NOTES="${RELEASE_NOTES:0:$AVAILABLE_SPACE}"
+            
+            # Find last complete section (look for last ## that has content after it)
+            LAST_SECTION=$(echo "$MAIN_NOTES" | grep -bo '## ' | tail -1 | cut -d: -f1 || echo "")
+            if [ -n "$LAST_SECTION" ] && [ "$LAST_SECTION" -gt 500 ]; then
+              # Check if there's another section after this one
+              REMAINING_CHECK="${RELEASE_NOTES:$LAST_SECTION}"
+              NEXT_SECTION=$(echo "$REMAINING_CHECK" | grep -bo '## ' | sed -n '2p' | cut -d: -f1 || echo "")
+              if [ -n "$NEXT_SECTION" ]; then
+                # Cut at the start of the last section that won't fit completely
+                MAIN_NOTES="${RELEASE_NOTES:0:$LAST_SECTION}"
+              fi
+            fi
+            
+            # Fallback: if no good section break, try to break at a newline
+            if [ ${#MAIN_NOTES} -gt $AVAILABLE_SPACE ]; then
+              MAIN_NOTES="${RELEASE_NOTES:0:$AVAILABLE_SPACE}"
+              LAST_NEWLINE=$(echo "$MAIN_NOTES" | grep -bo $'\n' | tail -1 | cut -d: -f1 || echo "")
+              if [ -n "$LAST_NEWLINE" ] && [ "$LAST_NEWLINE" -gt 500 ]; then
+                MAIN_NOTES="${MAIN_NOTES:0:$LAST_NEWLINE}"
+              fi
+            fi
+
+            OVERFLOW="${RELEASE_NOTES:${#MAIN_NOTES}}"
+
+            # Send main message with as much content as fits
+            MAIN_MESSAGE="${HEADER}
+
+${MAIN_NOTES}${FOOTER}"
+
+            MESSAGE_ID=$(send_discord "$MAIN_MESSAGE" "$DISCORD_CHANNEL_ID")
 
             if [ -z "$MESSAGE_ID" ]; then
               echo "::error::Failed to send Discord message"
               exit 1
             fi
 
-            echo "Created message $MESSAGE_ID, creating thread..."
+            echo "Created message $MESSAGE_ID, creating thread for overflow..."
             sleep 1
 
             # Create thread from the message
             THREAD_ID=$(create_thread "$DISCORD_CHANNEL_ID" "$MESSAGE_ID" "Release Notes ${RELEASE_TAG}")
 
             if [ -z "$THREAD_ID" ]; then
-              echo "::warning::Failed to create thread, posting notes as follow-up messages"
+              echo "::warning::Failed to create thread, posting overflow as follow-up messages"
               THREAD_ID="$DISCORD_CHANNEL_ID"
             else
               echo "Created thread $THREAD_ID"
@@ -275,8 +310,8 @@ jobs:
 
             sleep 1
 
-            # Post release notes in chunks to the thread
-            REMAINING="$RELEASE_NOTES"
+            # Post overflow in chunks to the thread
+            REMAINING="$OVERFLOW"
 
             while [ -n "$REMAINING" ]; do
               CHUNK="${REMAINING:0:$SAFE_LIMIT}"
@@ -284,16 +319,19 @@ jobs:
 
               # Try to break at a newline for cleaner splits
               if [ -n "$REMAINING" ]; then
-                LAST_NEWLINE=$(echo "$CHUNK" | tail -c +1000 | grep -bo $'\n' | tail -1 | cut -d: -f1 || echo "")
-                if [ -n "$LAST_NEWLINE" ]; then
-                  BREAK_POINT=$((1000 + LAST_NEWLINE))
-                  REMAINING="${CHUNK:$BREAK_POINT}${REMAINING}"
-                  CHUNK="${CHUNK:0:$BREAK_POINT}"
+                LAST_NEWLINE=$(echo "$CHUNK" | grep -bo $'\n' | tail -1 | cut -d: -f1 || echo "")
+                if [ -n "$LAST_NEWLINE" ] && [ "$LAST_NEWLINE" -gt 500 ]; then
+                  REMAINING="${CHUNK:$LAST_NEWLINE}${REMAINING}"
+                  CHUNK="${CHUNK:0:$LAST_NEWLINE}"
                 fi
               fi
 
-              send_discord "$CHUNK" "$THREAD_ID"
-              sleep 1
+              # Skip empty chunks
+              TRIMMED=$(echo "$CHUNK" | tr -d '[:space:]')
+              if [ -n "$TRIMMED" ]; then
+                send_discord "$CHUNK" "$THREAD_ID"
+                sleep 1
+              fi
             done
           fi
 
