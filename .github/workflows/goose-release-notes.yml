@@ -192,9 +192,9 @@ jobs:
           SAFE_LIMIT=1800
 
           # Build header message
-          HEADER="🚀 **Goose ${RELEASE_TAG} Released!**
+          HEADER="## 🎉 goose ${RELEASE_TAG} is here!
 
-          📦 **Download:** ${RELEASE_URL}"
+📦 **Download:** ${RELEASE_URL}"
 
           # Function to send Discord message via bot API, returns message ID
           send_discord() {
