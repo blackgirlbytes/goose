@@ -191,8 +191,9 @@ jobs:
           # Discord message character limit is ~2000 for regular messages
           SAFE_LIMIT=1800
 
-          # Build header message
-          HEADER="## 🎉 goose ${RELEASE_TAG} is here!
+          # Build header message (strip 'v' prefix from version for display)
+          VERSION="${RELEASE_TAG#v}"
+          HEADER="## 🎉 goose ${VERSION} is here!
 
 📦 **Download:** ${RELEASE_URL}"
 
