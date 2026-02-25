@@ -189,17 +189,28 @@ jobs:
 
           📦 **Download:** ${RELEASE_URL}"
 
-          # Function to send Discord message
+          # Function to send Discord message, returns message ID if requested
           send_discord() {
             local content="$1"
+            local thread_id="$2"
+            local wait_for_id="$3"
+
+            local url="$DISCORD_WEBHOOK"
+            if [ -n "$thread_id" ]; then
+              url="${url}?thread_id=${thread_id}"
+            elif [ "$wait_for_id" = "true" ]; then
+              url="${url}?wait=true"
+            fi
+
             content=$(echo "$content" | jq -Rs .)
-            response=$(curl -s -X POST "$DISCORD_WEBHOOK" \
+
+            response=$(curl -s -X POST "$url" \
               -H "Content-Type: application/json" \
-              -d "{\"content\": $content}" \
-              -w "\n%{http_code}")
-            http_code=$(echo "$response" | tail -1)
-            if [ "$http_code" != "204" ] && [ "$http_code" != "200" ]; then
-              echo "::warning::Discord API returned status $http_code"
+              -d "{\"content\": $content}")
+
+            # If we requested wait=true, extract the message ID for thread creation
+            if [ "$wait_for_id" = "true" ]; then
+              echo "$response" | jq -r '.id // empty'
             fi
           }
 
@@ -212,45 +223,54 @@ jobs:
             FULL_MESSAGE="${HEADER}
 
           ${RELEASE_NOTES}"
-            send_discord "$FULL_MESSAGE"
+            send_discord "$FULL_MESSAGE" "" "false"
           else
-            # Need to split - send header first, then notes in chunks
-            echo "Release notes exceed Discord limit (${TOTAL_LENGTH} chars), splitting..."
+            # Need to thread - send header first, create thread, then post notes in thread
+            echo "Release notes exceed Discord limit (${TOTAL_LENGTH} chars), using thread..."
 
-            send_discord "${HEADER}
+            # Send header and get message ID for thread
+            MESSAGE_ID=$(send_discord "${HEADER}
 
-          📝 *Release notes below (split due to length)*"
-            sleep 1
+          📝 *Full release notes in thread below*" "" "true")
 
-            # Split notes into chunks
-            PART=1
-            REMAINING="$RELEASE_NOTES"
-
-            while [ -n "$REMAINING" ]; do
-              CHUNK="${REMAINING:0:$SAFE_LIMIT}"
-              REMAINING="${REMAINING:$SAFE_LIMIT}"
-
-              # Try to break at a newline for cleaner splits
-              if [ -n "$REMAINING" ]; then
-                LAST_NEWLINE=$(echo "$CHUNK" | tail -c +1000 | grep -bo $'\n' | tail -1 | cut -d: -f1 || echo "")
-                if [ -n "$LAST_NEWLINE" ]; then
-                  BREAK_POINT=$((1000 + LAST_NEWLINE))
-                  REMAINING="${CHUNK:$BREAK_POINT}${REMAINING}"
-                  CHUNK="${CHUNK:0:$BREAK_POINT}"
-                fi
-              fi
-
-              if [ -n "$REMAINING" ]; then
-                send_discord "**Part ${PART}:**
-          ${CHUNK}"
-              else
-                send_discord "**Part ${PART} (Final):**
-          ${CHUNK}"
-              fi
-
-              PART=$((PART + 1))
+            if [ -z "$MESSAGE_ID" ]; then
+              echo "::warning::Could not get message ID for threading, falling back to sequential posts"
+              # Fallback: just post notes as follow-up
               sleep 1
-            done
+              REMAINING="$RELEASE_NOTES"
+              while [ -n "$REMAINING" ]; do
+                CHUNK="${REMAINING:0:$SAFE_LIMIT}"
+                REMAINING="${REMAINING:$SAFE_LIMIT}"
+                send_discord "$CHUNK" "" "false"
+                sleep 1
+              done
+            else
+              echo "Created message $MESSAGE_ID, posting notes in thread..."
+              sleep 1
+
+              # Post release notes in chunks to the thread
+              REMAINING="$RELEASE_NOTES"
+              PART=1
+
+              while [ -n "$REMAINING" ]; do
+                CHUNK="${REMAINING:0:$SAFE_LIMIT}"
+                REMAINING="${REMAINING:$SAFE_LIMIT}"
+
+                # Try to break at a newline for cleaner splits
+                if [ -n "$REMAINING" ]; then
+                  LAST_NEWLINE=$(echo "$CHUNK" | tail -c +1000 | grep -bo $'\n' | tail -1 | cut -d: -f1 || echo "")
+                  if [ -n "$LAST_NEWLINE" ]; then
+                    BREAK_POINT=$((1000 + LAST_NEWLINE))
+                    REMAINING="${CHUNK:$BREAK_POINT}${REMAINING}"
+                    CHUNK="${CHUNK:0:$BREAK_POINT}"
+                  fi
+                fi
+
+                send_discord "$CHUNK" "$MESSAGE_ID" "false"
+                PART=$((PART + 1))
+                sleep 1
+              done
+            fi
           fi
 
           echo "::notice::Discord notification sent successfully"
